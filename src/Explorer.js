@@ -2325,7 +2325,35 @@ function Attribution() {
     </div>
   );
 }
+type TypeSearchBarProps = {
+  onSearch: (string) => void,
+  value: string,
+  style?: Object,
+};
 
+class TypeSearchBar extends React.PureComponent<TypeSearchBarProps> {
+  render() {
+    return (
+      <div style={{ marginBottom: 8, padding: '4px 0' }}>
+        <input
+          type="text"
+          placeholder="Search types..."
+          value={this.props.value}
+          onChange={e => this.props.onSearch(e.target.value)}
+          style={{
+            width: '100%',
+            fontSize: 12,
+            padding: '4px 8px',
+            boxSizing: 'border-box',
+            border: '1px solid #ccc',
+            borderRadius: 3,
+            ...this.props.style,
+          }}
+        />
+      </div>
+    );
+  }
+}
 class Explorer extends React.PureComponent<Props, State> {
   static defaultProps = {
     getDefaultFieldNames: defaultGetDefaultFieldNames,
@@ -2365,6 +2393,19 @@ class Explorer extends React.PureComponent<Props, State> {
       var el = document.querySelector(selector);
       el && el.scrollIntoView();
     }
+  };
+  _setTypeSearch = (value: string) => {
+    this.setState({ typeSearch: value });
+  };
+
+  // --- Utility to filter type names by search ---
+  _filterFields = (fields: ?GraphQLFieldMap<any, any>, search: string) => {
+    if (!fields) return {};
+    if (!search.trim()) return fields;
+    const lower = search.trim().toLowerCase();
+    return Object.keys(fields)
+      .filter(fieldName => fieldName.toLowerCase().includes(lower))
+      .reduce((acc, name) => { acc[name] = fields[name]; return acc; }, {});
   };
 
   render() {
@@ -2698,7 +2739,10 @@ class Explorer extends React.PureComponent<Props, State> {
     const availableFragments = {...documentFragments, ...externalFragments};
 
     const attribution = this.props.showAttribution ? <Attribution /> : null;
-
+    const { typeSearch } = this.state;
+    const filteredQueryFields = this._filterFields(queryFields, typeSearch);
+    const filteredMutationFields = this._filterFields(mutationFields, typeSearch);
+    const filteredSubscriptionFields = this._filterFields(subscriptionFields, typeSearch);
     return (
       <div
         ref={ref => {
@@ -2717,6 +2761,11 @@ class Explorer extends React.PureComponent<Props, State> {
           height: '100%',
         }}
         className="graphiql-explorer-root">
+        <TypeSearchBar
+          value={typeSearch}
+          onSearch={this._setTypeSearch}
+          style={{ marginBottom: 12 }}
+        />
         <div
           style={{
             flexGrow: '1',
@@ -2760,15 +2809,15 @@ class Explorer extends React.PureComponent<Props, State> {
                   ? fragmentType.getFields()
                   : null;
 
-              const fields =
+              let fields =
                 operationType === 'query'
-                  ? queryFields
+                  ? filteredQueryFields
                   : operationType === 'mutation'
-                  ? mutationFields
+                  ? filteredMutationFields
                   : operationType === 'subscription'
-                  ? subscriptionFields
+                  ? filteredSubscriptionFields
                   : operation.kind === 'FragmentDefinition'
-                  ? fragmentFields
+                  ? this._filterFields(fragmentFields, typeSearch)
                   : null;
 
               const fragmentTypeName =
