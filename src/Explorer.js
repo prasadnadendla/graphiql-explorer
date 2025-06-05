@@ -2364,6 +2364,7 @@ class Explorer extends React.PureComponent<Props, State> {
     newOperationType: 'query',
     operation: null,
     operationToScrollTo: null,
+    typeSearch: ''
   };
 
   _ref: ?any;
